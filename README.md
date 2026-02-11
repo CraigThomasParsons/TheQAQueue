@@ -1,66 +1,259 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Vera - QA Evaluation Engine
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Vera is a Laravel 11-based QA evaluation engine that analyzes task runs and provides intelligent feedback including verdicts, confidence scores, retry guidance, and escalation recommendations.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Task Run Evaluation**: Evaluate task execution results with success/failure tracking
+- **Confidence Calculation**: Dynamic confidence scoring with:
+  - Multiplicative decay on failures (0.8x multiplier)
+  - Diminishing success gains (exponential decay based on consecutive successes)
+  - Initial confidence of 0.5, clamped between 0 and 1
+- **Failure Type Classification**: Support for multiple failure types:
+  - Syntax Error
+  - Logic Error
+  - Timeout
+  - Resource Error
+  - Validation Error
+  - Assertion Failure
+  - Unknown
+- **Intelligent Retry Guidance**: 
+  - Exponential backoff calculation
+  - Failure-type-specific retry limits
+  - Contextual action suggestions
+- **Escalation Rules**:
+  - Low confidence threshold (< 0.3)
+  - Consecutive failure detection (≥ 3 failures)
+  - Critical failure type identification
+- **RESTful API**: JSON API endpoints for evaluation and retrieval
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Architecture
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Core Components
 
-## Learning Laravel
+1. **Models**
+   - `TaskRun`: Represents a single task execution
+   - `TaskEvaluation`: Stores evaluation results and metadata
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+2. **Services**
+   - `ConfidenceCalculationService`: Implements confidence scoring algorithm
+   - `EscalationRuleService`: Determines when to escalate issues
+   - `RetryGuidanceService`: Generates intelligent retry recommendations
+   - `TaskEvaluationService`: Orchestrates the evaluation process
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+3. **Enums**
+   - `FailureType`: Categorizes different types of failures
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## API Documentation
 
-## Laravel Sponsors
+### Base URL
+```
+http://your-domain/api/v1
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Endpoints
 
-### Premium Partners
+#### 1. Evaluate a Task Run
+**POST** `/evaluate`
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+Creates a new task run and evaluates it.
 
-## Contributing
+**Request Body:**
+```json
+{
+  "task_name": "string (required)",
+  "success": "boolean (required)",
+  "failure_type": "string (optional): syntax_error|logic_error|timeout|resource_error|validation_error|assertion_failure|unknown",
+  "error_message": "string (optional)",
+  "execution_time_ms": "integer (optional)",
+  "metadata": "object (optional)"
+}
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**Example Request:**
+```bash
+curl -X POST http://localhost:8000/api/v1/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_name": "user_authentication",
+    "success": false,
+    "failure_type": "timeout",
+    "error_message": "Database connection timed out",
+    "execution_time_ms": 5000
+  }'
+```
 
-## Code of Conduct
+**Response (201 Created):**
+```json
+{
+  "task_run_id": 1,
+  "verdict": "fail",
+  "confidence": 0.4,
+  "confidence_delta": -0.1,
+  "should_escalate": true,
+  "escalation_reason": "Critical failure type detected: timeout",
+  "retry_guidance": {
+    "should_retry": true,
+    "suggested_delay_seconds": 5,
+    "max_retry_attempts": 2,
+    "suggested_actions": [
+      "Increase timeout limit",
+      "Optimize query performance",
+      "Check for deadlocks"
+    ]
+  },
+  "evaluation_id": 1
+}
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+#### 2. Get Evaluation by ID
+**GET** `/evaluations/{id}`
 
-## Security Vulnerabilities
+Retrieves a specific evaluation with its associated task run.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+**Example Request:**
+```bash
+curl http://localhost:8000/api/v1/evaluations/1
+```
+
+**Response (200 OK):**
+```json
+{
+  "evaluation": {
+    "id": 1,
+    "task_run_id": 1,
+    "verdict": "pass",
+    "confidence": "0.6000",
+    "confidence_delta": "0.1000",
+    "retry_guidance": null,
+    "should_escalate": false,
+    "escalation_reason": null,
+    "evaluation_metadata": {
+      "previous_confidence": 0.5,
+      "evaluation_timestamp": "2026-02-11T19:09:48+00:00"
+    },
+    "created_at": "2026-02-11T19:09:48.000000Z",
+    "updated_at": "2026-02-11T19:09:48.000000Z",
+    "task_run": { }
+  },
+  "task_run": { }
+}
+```
+
+#### 3. List Evaluations
+**GET** `/evaluations?task_name={task_name}`
+
+Lists evaluations with optional filtering by task name.
+
+**Query Parameters:**
+- `task_name` (optional): Filter evaluations by task name
+- `page` (optional): Page number for pagination
+
+**Example Request:**
+```bash
+curl "http://localhost:8000/api/v1/evaluations?task_name=user_authentication"
+```
+
+**Response (200 OK):**
+```json
+{
+  "current_page": 1,
+  "data": [
+    { }
+  ],
+  "first_page_url": "...",
+  "last_page_url": "...",
+  "next_page_url": "...",
+  "per_page": 20,
+  "total": 42
+}
+```
+
+## Installation
+
+### Prerequisites
+- PHP 8.2 or higher
+- Composer
+- SQLite (default) or MySQL/PostgreSQL
+
+### Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/CraigThomasParsons/TheQAQueue.git
+cd TheQAQueue
+```
+
+2. Install dependencies:
+```bash
+composer install
+```
+
+3. Create environment file:
+```bash
+cp .env.example .env
+```
+
+4. Generate application key:
+```bash
+php artisan key:generate
+```
+
+5. Run migrations:
+```bash
+php artisan migrate
+```
+
+6. Start the development server:
+```bash
+php artisan serve
+```
+
+The API will be available at `http://localhost:8000/api/v1`
+
+## Testing
+
+Run the test suite:
+```bash
+php artisan test
+```
+
+Run specific test suites:
+```bash
+# Feature tests only
+php artisan test --testsuite=Feature
+
+# Unit tests only
+php artisan test --testsuite=Unit
+```
+
+## Confidence Algorithm Details
+
+### Initial State
+- All tasks start with a confidence of 0.5
+
+### On Success
+```
+gain = 0.1 × (0.9 ^ consecutive_successes)
+new_confidence = current_confidence + gain
+```
+
+### On Failure
+```
+new_confidence = current_confidence × 0.8
+```
+
+### Bounds
+- Confidence is always clamped between 0.0 and 1.0
+
+## Escalation Rules
+
+A task is escalated when any of these conditions are met:
+
+1. **Low Confidence**: Confidence drops below 0.3
+2. **Consecutive Failures**: 3 or more consecutive failures
+3. **Critical Failure Type**: Timeout or Resource Error detected
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
