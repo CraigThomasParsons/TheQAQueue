@@ -1,0 +1,95 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: theqaqueue_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - db
+      - redis
+    networks:
+      - qaqueue
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: theqaqueue
+      DB_USERNAME: laravel
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+
+  web:
+    image: nginx:alpine
+    container_name: theqaqueue_web
+    restart: unless-stopped
+    ports:
+      - "8008:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - qaqueue
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: theqaqueue_worker
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan queue:work --sleep=3 --tries=3
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - app
+      - redis
+    networks:
+      - qaqueue
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: theqaqueue
+      DB_USERNAME: laravel
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+
+  db:
+    image: mysql:8.0
+    container_name: theqaqueue_db
+    restart: unless-stopped
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_DATABASE: theqaqueue
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: secret
+    volumes:
+      - qaqueue_dbdata:/var/lib/mysql
+    networks:
+      - qaqueue
+
+  redis:
+    image: redis:alpine
+    container_name: theqaqueue_redis
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    networks:
+      - qaqueue
+
+volumes:
+  qaqueue_dbdata:
+
+networks:
+  qaqueue:
+    driver: bridge
