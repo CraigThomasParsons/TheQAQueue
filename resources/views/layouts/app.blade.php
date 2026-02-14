@@ -39,8 +39,14 @@
                         <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
                             <a href="{{ route('queue.index') }}" 
                                class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
-                                      {{ request()->routeIs('queue.*') ? 'border-purple-400 text-gray-900 dark:text-gray-100' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700' }}">
-                                Testing Queue
+                                      {{ request()->routeIs('queue.index') || request()->routeIs('queue.show') || request()->routeIs('queue.start-testing') || request()->routeIs('queue.mark-passed') || request()->routeIs('queue.mark-failed') || request()->routeIs('queue.return-to-queue') ? 'border-purple-400 text-gray-900 dark:text-gray-100' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700' }}">
+                                Story Queue
+                            </a>
+
+                            <a href="{{ route('queue.tasks.index') }}"
+                               class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
+                                      {{ request()->routeIs('queue.tasks.*') ? 'border-purple-400 text-gray-900 dark:text-gray-100' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700' }}">
+                                Task Queue
                             </a>
                         </div>
                     </div>

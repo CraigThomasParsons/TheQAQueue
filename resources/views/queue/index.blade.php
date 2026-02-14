@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Testing Queue')
+@section('title', 'Story Queue')
 
 @section('content')
 <div class="max-w-7xl mx-auto">
     {{-- Page header with title and stats --}}
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">🧪 Testing Queue</h1>
-        <p class="text-gray-600 mt-1">QA testing dashboard for completed stories</p>
+        <h1 class="text-2xl font-bold text-gray-900">🧪 Story Queue</h1>
+        <p class="text-gray-600 mt-1">Manual story-level QA dashboard</p>
     </div>
 
     {{-- Statistics summary cards --}}
