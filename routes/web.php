@@ -21,6 +21,7 @@ Route::get('/', function () {
  * - Return failed stories to development
  */
 Route::get('/queue', [QueueController::class, 'index'])->name('queue.index');
+Route::get('/queue/kanban', [QueueController::class, 'kanban'])->name('queue.kanban');
 Route::get('/queue/tasks', [TaskQueueController::class, 'index'])->name('queue.tasks.index');
 Route::get('/queue/{story}', [QueueController::class, 'show'])->name('queue.show');
 Route::post('/queue/{story}/start-testing', [QueueController::class, 'startTesting'])->name('queue.start-testing');

@@ -54,6 +54,50 @@ class QueueController extends Controller
     }
 
     /**
+     * Display a 4-column Kanban board for QA workflow.
+     *
+     * Columns:
+     * - Ready to test (Queued)
+     * - In Testing
+     * - Sent Back
+     * - Done
+     */
+    public function kanban()
+    {
+        // Ready to test (Queued): development completed and waiting for QA pickup.
+        $readyQueuedStories = Story::where('story_status_id', 3)
+            ->with(['epic', 'persona'])
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at')
+            ->get();
+
+        // In Testing: currently in QA execution.
+        $inTestingStories = Story::where('story_status_id', 4)
+            ->with(['epic', 'persona'])
+            ->orderBy('updated_at', 'asc')
+            ->get();
+
+        // Sent Back: failed QA and sent back for rework.
+        $sentBackStories = Story::where('story_status_id', 6)
+            ->with(['epic', 'persona'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        // Done: QA passed.
+        $doneStories = Story::where('story_status_id', 5)
+            ->with(['epic', 'persona'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        return view('queue.kanban', compact(
+            'readyQueuedStories',
+            'inTestingStories',
+            'sentBackStories',
+            'doneStories'
+        ));
+    }
+
+    /**
      * Start testing a story.
      *
      * Moves story from ready queue to in-testing status.
